@@ -1,448 +1,260 @@
-This README is just a fast *quick start* document. You can find more detailed documentation at [redis.io](https://redis.io).
+本自述文件只是一个快速入门的快速文档。您可以在redis.io上找到更详细的文档。
 
-What is Redis?
---------------
+什么是Redis？
+Redis通常被称为数据结构服务器。这意味着Redis通过一组命令提供对可变数据结构的访问，这些命令使用带有TCP套接字和简单协议的服务器 - 客户端模型发送。因此，不同的进程可以以共享方式查询和修改相同的数据结构。
 
-Redis is often referred as a *data structures* server. What this means is that Redis provides access to mutable data structures via a set of commands, which are sent using a *server-client* model with TCP sockets and a simple protocol. So different processes can query and modify the same data structures in a shared way.
+Redis中实现的数据结构有一些特殊属性：
 
-Data structures implemented into Redis have a few special properties:
+Redis关心将它们存储在磁盘上，即使它们总是被提供并修改到服务器内存中。这意味着Redis速度很快，但这也是非易失性的。
+数据结构的实现强调内存效率，因此与使用高级编程语言建模的相同数据结构相比，Redis内部的数据结构可能使用更少的内存。
+Redis提供了许多在数据库中自然可以找到的功能，如复制，可调节的持久性级别，群集，高可用性。
+另一个很好的例子是将Redis视为memcached的更复杂版本，其中操作不仅仅是SET和GET，而是用于处理复杂数据类型（如Lists，Sets，有序数据结构等）的操作。
 
-* Redis cares to store them on disk, even if they are always served and modified into the server memory. This means that Redis is fast, but that is also non-volatile.
-* Implementation of data structures stress on memory efficiency, so data structures inside Redis will likely use less memory compared to the same data structure modeled using an high level programming language.
-* Redis offers a number of features that are natural to find in a database, like replication, tunable levels of durability, cluster, high availability.
+如果您想了解更多信息，请参阅选定的起点列表：
 
-Another good example is to think of Redis as a more complex version of memcached, where the operations are not just SETs and GETs, but operations to work with complex data types like Lists, Sets, ordered data structures, and so forth.
+Redis数据类型简介。http://redis.io/topics/data-types-intro
+直接在浏览器中尝试Redis。http://try.redis.io
+Redis命令的完整列表。http://redis.io/commands
+Redis官方文档中还有更多内容。http://redis.io/documentation
+建立Redis
+Redis可以在Linux，OSX，OpenBSD，NetBSD，FreeBSD上编译和使用。我们支持大端和小端架构，以及32位和64位系统。
 
-If you want to know more, this is a list of selected starting points:
+它可以在Solaris派生系统（例如SmartOS）上编译，但我们对此平台的支持是最好的，并且不保证Redis在Linux，OSX和* BSD中工作得很好。
 
-* Introduction to Redis data types. http://redis.io/topics/data-types-intro
-* Try Redis directly inside your browser. http://try.redis.io
-* The full list of Redis commands. http://redis.io/commands
-* There is much more inside the Redis official documentation. http://redis.io/documentation
+它很简单：
 
-Building Redis
---------------
+% make
+您可以使用以下命令运行32位Redis二进制文件：
 
-Redis can be compiled and used on Linux, OSX, OpenBSD, NetBSD, FreeBSD.
-We support big endian and little endian architectures, and both 32 bit
-and 64 bit systems.
+% make 32bit
+在构建Redis之后，最好使用以下方法对其进行测试：
 
-It may compile on Solaris derived systems (for instance SmartOS) but our
-support for this platform is *best effort* and Redis is not guaranteed to
-work as well as in Linux, OSX, and \*BSD there.
+% make test
+修复依赖项或缓存构建选项的构建问题
+Redis有一些包含在deps目录中的依赖项。 make即使依赖项的源代码中的某些内容发生更改，也不会自动重建依赖项。
 
-It is as simple as:
+当您使用git pull或以任何其他方式修改依赖项树中的代码更新源代码时，请确保使用以下命令以便真正清理所有内容并从头开始重建：
 
-    % make
+make distclean
+这将清洁：jemalloc，lua，hiredis，linenoise。
 
-You can run a 32 bit Redis binary using:
+此外，如果您强制某些构建选项（如32位目标，没有C编译器优化（用于调试目的））和其他类似的构建时选项，那么这些选项将无限期地缓存，直到您发出make distclean 命令。
 
-    % make 32bit
+修复构建32位二进制文​​件的问题
+如果在使用32位目标构建Redis之后需要使用64位目标重建它，或者相反，则需要make distclean在Redis分发的根目录中执行a 。
 
-After building Redis, it is a good idea to test it using:
+如果在尝试构建Redis的32位二进制文​​件时出现构建错误，请尝试以下步骤：
 
-    % make test
+安装包libc6-dev-i386（也可以尝试g ++ - multilib）。
+尝试使用以下命令行而不是make 32bit： make CFLAGS="-m32 -march=native" LDFLAGS="-m32"
+分配器
+在构建Redis时选择非默认内存分配器是通过设置MALLOC环境变量来完成的。默认情况下，Redis是针对libc malloc编译和链接的，除了jemalloc是Linux系统上的默认设置。选择此默认值是因为jemalloc已证明比libc malloc具有更少的碎片问题。
 
-Fixing build problems with dependencies or cached build options
----------
+要强制编译libc malloc，请使用：
 
-Redis has some dependencies which are included into the `deps` directory.
-`make` does not automatically rebuild dependencies even if something in
-the source code of dependencies changes.
+% make MALLOC=libc
+要在Mac OS X系统上针对jemalloc进行编译，请使用：
 
-When you update the source code with `git pull` or when code inside the
-dependencies tree is modified in any other way, make sure to use the following
-command in order to really clean everything and rebuild from scratch:
+% make MALLOC=jemalloc
+详细的构建
+默认情况下，Redis将使用用户友好的彩色输出进行构建。如果要查看更详细的输出，请使用以下命令：
 
-    make distclean
+% make V=1
+运行Redis
+要使用默认配置运行Redis，只需键入：
 
-This will clean: jemalloc, lua, hiredis, linenoise.
+% cd src
+% ./redis-server
+如果要提供redis.conf，则必须使用其他参数（配置文件的路径）运行它：
 
-Also if you force certain build options like 32bit target, no C compiler
-optimizations (for debugging purposes), and other similar build time options,
-those options are cached indefinitely until you issue a `make distclean`
-command.
+% cd src
+% ./redis-server /path/to/redis.conf
+可以通过使用命令行直接将参数作为选项传递来更改Redis配置。例子：
 
-Fixing problems building 32 bit binaries
----------
+% ./redis-server --port 9999 --replicaof 127.0.0.1 6379
+% ./redis-server /etc/redis/6379.conf --loglevel debug
+使用命令行支持redis.conf中的所有选项作为选项，名称完全相同。
 
-If after building Redis with a 32 bit target you need to rebuild it
-with a 64 bit target, or the other way around, you need to perform a
-`make distclean` in the root directory of the Redis distribution.
+和Redis一起玩
+您可以使用redis-cli与Redis一起玩。启动redis-server实例，然后在另一个终端中尝试以下操作：
 
-In case of build errors when trying to build a 32 bit binary of Redis, try
-the following steps:
+% cd src
+% ./redis-cli
+redis> ping
+PONG
+redis> set foo bar
+OK
+redis> get foo
+"bar"
+redis> incr mycounter
+(integer) 1
+redis> incr mycounter
+(integer) 2
+redis>
+您可以在http://redis.io/commands找到所有可用命令的列表。
 
-* Install the packages libc6-dev-i386 (also try g++-multilib).
-* Try using the following command line instead of `make 32bit`:
-  `make CFLAGS="-m32 -march=native" LDFLAGS="-m32"`
+安装Redis
+要将Redis二进制文件安装到/ usr / local / bin中，只需使用：
 
-Allocator
----------
+% make install
+make PREFIX=/some/other/directory install如果您希望使用其他目的地，则可以使用。
 
-Selecting a non-default memory allocator when building Redis is done by setting
-the `MALLOC` environment variable. Redis is compiled and linked against libc
-malloc by default, with the exception of jemalloc being the default on Linux
-systems. This default was picked because jemalloc has proven to have fewer
-fragmentation problems than libc malloc.
+make install只会在系统中安装二进制文件，但不会在适当的位置配置init脚本和配置文件。如果您只想与Redis一起玩，则不需要这样做，但如果您正在为生产系统安装它，我们有一个脚本为Ubuntu和Debian系统执行此操作：
 
-To force compiling against libc malloc, use:
+% cd utils
+% ./install_server.sh
+注意：install_server.sh不适用于Mac OSX; 它仅适用于Linux。
 
-    % make MALLOC=libc
+该脚本将向您提出几个问题，并将设置您正确运行Redis作为后台守护程序所需的一切，该守护程序将在系统重新启动时重新启动。
 
-To compile against jemalloc on Mac OS X systems, use:
+您可以停止并使用名为脚本启动Redis的 /etc/init.d/redis_<portnumber>，例如/etc/init.d/redis_6379。
 
-    % make MALLOC=jemalloc
+代码贡献
+注意：通过以任何形式向Redis项目提供代码，包括通过Github发送拉取请求，通过私人电子邮件或公共讨论组发送代码片段或补丁，您同意根据BSD许可条款发布您的代码，您可以在Redis源代码分发中包含的COPYING文件中查找。
 
-Verbose build
--------------
+有关详细信息，请参阅此源代码分发中的CONTRIBUTING文件。
 
-Redis will build with a user friendly colorized output by default.
-If you want to see a more verbose output use the following:
+Redis内部
+如果您正在阅读本自述文件，您可能会在Github页面前面或者您只是解开Redis分发tar球。在这两种情况下，您距离源代码基本上只有一步之遥，因此我们在这里解释Redis源代码布局，每个文件中的一般概念，Redis服务器内部最重要的功能和结构等等。我们将所有的讨论保持在高水平而不深入细节，因为这个文档会很大，否则我们的代码库会不断变化，但是一般的想法应该是了解更多内容的一个好的起点。此外，大多数代码都有大量注释并且易于遵循。
 
-    % make V=1
+源代码布局
+Redis根目录只包含此README，Makefile调用src目录中的实际Makefile 以及Redis和Sentinel的示例配置。您可以找到一些用于执行Redis，Redis Cluster和Redis Sentinel单元测试的shell脚本，这些测试是在tests 目录中实现的。
 
-Running Redis
--------------
+根目录中有以下重要目录：
 
-To run Redis with the default configuration just type:
+src：包含用C编写的Redis实现。
+tests：包含单元测试，在Tcl中实现。
+deps：包含Redis使用的库。编译Redis所需的一切都在这个目录中; 您的系统只需要提供libcPOSIX兼容接口和C编译器。值得注意deps的是jemalloc，它包含一个副本，它是Linux下Redis的默认分配器。请注意，deps还有一些东西是从Redis项目开始的，但主存储库却没有antirez/redis。
+还有一些目录，但它们对我们的目标不是很重要。我们将主要关注src包含Redis实现的地方，探索每个文件中的内容。文件被公开的顺序是遵循的逻辑顺序，以便逐步地公开不同的复杂层。
 
-    % cd src
-    % ./redis-server
-
-If you want to provide your redis.conf, you have to run it using an additional
-parameter (the path of the configuration file):
-
-    % cd src
-    % ./redis-server /path/to/redis.conf
-
-It is possible to alter the Redis configuration by passing parameters directly
-as options using the command line. Examples:
-
-    % ./redis-server --port 9999 --replicaof 127.0.0.1 6379
-    % ./redis-server /etc/redis/6379.conf --loglevel debug
-
-All the options in redis.conf are also supported as options using the command
-line, with exactly the same name.
-
-Playing with Redis
-------------------
-
-You can use redis-cli to play with Redis. Start a redis-server instance,
-then in another terminal try the following:
-
-    % cd src
-    % ./redis-cli
-    redis> ping
-    PONG
-    redis> set foo bar
-    OK
-    redis> get foo
-    "bar"
-    redis> incr mycounter
-    (integer) 1
-    redis> incr mycounter
-    (integer) 2
-    redis>
-
-You can find the list of all the available commands at http://redis.io/commands.
-
-Installing Redis
------------------
-
-In order to install Redis binaries into /usr/local/bin just use:
-
-    % make install
-
-You can use `make PREFIX=/some/other/directory install` if you wish to use a
-different destination.
-
-Make install will just install binaries in your system, but will not configure
-init scripts and configuration files in the appropriate place. This is not
-needed if you want just to play a bit with Redis, but if you are installing
-it the proper way for a production system, we have a script doing this
-for Ubuntu and Debian systems:
-
-    % cd utils
-    % ./install_server.sh
-
-_Note_: `install_server.sh` will not work on Mac OSX; it is built for Linux only.
-
-The script will ask you a few questions and will setup everything you need
-to run Redis properly as a background daemon that will start again on
-system reboots.
-
-You'll be able to stop and start Redis using the script named
-`/etc/init.d/redis_<portnumber>`, for instance `/etc/init.d/redis_6379`.
-
-Code contributions
------------------
-
-Note: by contributing code to the Redis project in any form, including sending
-a pull request via Github, a code fragment or patch via private email or
-public discussion groups, you agree to release your code under the terms
-of the BSD license that you can find in the [COPYING][1] file included in the Redis
-source distribution.
-
-Please see the [CONTRIBUTING][2] file in this source distribution for more
-information.
-
-[1]: https://github.com/antirez/redis/blob/unstable/COPYING
-[2]: https://github.com/antirez/redis/blob/unstable/CONTRIBUTING
-
-Redis internals
-===
-
-If you are reading this README you are likely in front of a Github page
-or you just untarred the Redis distribution tar ball. In both the cases
-you are basically one step away from the source code, so here we explain
-the Redis source code layout, what is in each file as a general idea, the
-most important functions and structures inside the Redis server and so forth.
-We keep all the discussion at a high level without digging into the details
-since this document would be huge otherwise and our code base changes
-continuously, but a general idea should be a good starting point to
-understand more. Moreover most of the code is heavily commented and easy
-to follow.
-
-Source code layout
----
-
-The Redis root directory just contains this README, the Makefile which
-calls the real Makefile inside the `src` directory and an example
-configuration for Redis and Sentinel. You can find a few shell
-scripts that are used in order to execute the Redis, Redis Cluster and
-Redis Sentinel unit tests, which are implemented inside the `tests`
-directory.
-
-Inside the root are the following important directories:
-
-* `src`: contains the Redis implementation, written in C.
-* `tests`: contains the unit tests, implemented in Tcl.
-* `deps`: contains libraries Redis uses. Everything needed to compile Redis is inside this directory; your system just needs to provide `libc`, a POSIX compatible interface and a C compiler. Notably `deps` contains a copy of `jemalloc`, which is the default allocator of Redis under Linux. Note that under `deps` there are also things which started with the Redis project, but for which the main repository is not `antirez/redis`.
-
-There are a few more directories but they are not very important for our goals
-here. We'll focus mostly on `src`, where the Redis implementation is contained,
-exploring what there is inside each file. The order in which files are
-exposed is the logical one to follow in order to disclose different layers
-of complexity incrementally.
-
-Note: lately Redis was refactored quite a bit. Function names and file
-names have been changed, so you may find that this documentation reflects the
-`unstable` branch more closely. For instance in Redis 3.0 the `server.c`
-and `server.h` files were named `redis.c` and `redis.h`. However the overall
-structure is the same. Keep in mind that all the new developments and pull
-requests should be performed against the `unstable` branch.
+注意：最近Redis被重构了很多。函数名称和文件名已更改，因此您可能会发现此文档unstable更密切地反映了 分支。例如在Redis的3.0 server.c 和server.h文件被命名为redis.c和redis.h。但总体结构是一样的。请记住，所有新开发和拉取请求都应针对unstable分支执行。
 
 server.h
----
+理解程序如何工作的最简单方法是理解它使用的数据结构。所以我们将从Redis的主头文件开始，即server.h。
 
-The simplest way to understand how a program works is to understand the
-data structures it uses. So we'll start from the main header file of
-Redis, which is `server.h`.
+所有服务器配置和一般所有共享状态都在名为servertype 的全局结构中定义struct redisServer。该结构中的一些重要领域是：
 
-All the server configuration and in general all the shared state is
-defined in a global structure called `server`, of type `struct redisServer`.
-A few important fields in this structure are:
+server.db 是一个Redis数据库数组，其中存储了数据。
+server.commands 是命令表。
+server.clients 是连接到服务器的客户端的链接列表。
+server.master 如果实例是副本，则是特殊客户端，即主服务器。
+还有很多其他领域。大多数字段都直接在结构定义中注释。
 
-* `server.db` is an array of Redis databases, where data is stored.
-* `server.commands` is the command table.
-* `server.clients` is a linked list of clients connected to the server.
-* `server.master` is a special client, the master, if the instance is a replica.
+另一个重要的Redis数据结构是定义客户端的数据结构。在过去它被称为redisClient，现在只是client。结构有很多领域，这里我们只展示主要的领域：
 
-There are tons of other fields. Most fields are commented directly inside
-the structure definition.
+struct client {
+    int fd;
+    sds querybuf;
+    int argc;
+    robj **argv;
+    redisDb *db;
+    int flags;
+    list *reply;
+    char buf[PROTO_REPLY_CHUNK_BYTES];
+    ... many other fields ...
+}
+客户端结构定义了连接的客户端：
 
-Another important Redis data structure is the one defining a client.
-In the past it was called `redisClient`, now just `client`. The structure
-has many fields, here we'll just show the main ones:
+该fd字段是客户端套接字文件描述符。
+argc并argv使用客户端正在执行的命令填充，以便实现给定Redis命令的函数可以读取参数。
+querybuf 累积来自客户端的请求，Redis服务器根据Redis协议解析请求，并通过调用客户端正在执行的命令的实现来执行。
+reply并且buf是动态和静态缓冲区，用于累积服务器发送给客户端的回复。只要文件描述符可写，这些缓冲区就会逐渐写入套接字。
+正如您在上面的客户端结构中所看到的，命令中的参数被描述为robj结构。以下是完整robj 结构，它定义了Redis对象：
 
-    struct client {
-        int fd;
-        sds querybuf;
-        int argc;
-        robj **argv;
-        redisDb *db;
-        int flags;
-        list *reply;
-        char buf[PROTO_REPLY_CHUNK_BYTES];
-        ... many other fields ...
-    }
+typedef struct redisObject {
+    unsigned type:4;
+    unsigned encoding:4;
+    unsigned lru:LRU_BITS; /* lru time (relative to server.lruclock) */
+    int refcount;
+    void *ptr;
+} robj;
+基本上，这个结构可以表示所有基本的Redis数据类型，如字符串，列表，集合，有序集等。有趣的是它有一个type字段，因此可以知道给定对象具有什么类型，以及a refcount，以便可以在多个地方引用同一个对象而无需多次分配它。最后，该ptr 字段指向对象的实际表示，即使对于相同类型，也可能会有所不同，具体取决于所encoding使用的。
 
-The client structure defines a *connected client*:
-
-* The `fd` field is the client socket file descriptor.
-* `argc` and `argv` are populated with the command the client is executing, so that functions implementing a given Redis command can read the arguments.
-* `querybuf` accumulates the requests from the client, which are parsed by the Redis server according to the Redis protocol and executed by calling the implementations of the commands the client is executing.
-* `reply` and `buf` are dynamic and static buffers that accumulate the replies the server sends to the client. These buffers are incrementally written to the socket as soon as the file descriptor is writable.
-
-As you can see in the client structure above, arguments in a command
-are described as `robj` structures. The following is the full `robj`
-structure, which defines a *Redis object*:
-
-    typedef struct redisObject {
-        unsigned type:4;
-        unsigned encoding:4;
-        unsigned lru:LRU_BITS; /* lru time (relative to server.lruclock) */
-        int refcount;
-        void *ptr;
-    } robj;
-
-Basically this structure can represent all the basic Redis data types like
-strings, lists, sets, sorted sets and so forth. The interesting thing is that
-it has a `type` field, so that it is possible to know what type a given
-object has, and a `refcount`, so that the same object can be referenced
-in multiple places without allocating it multiple times. Finally the `ptr`
-field points to the actual representation of the object, which might vary
-even for the same type, depending on the `encoding` used.
-
-Redis objects are used extensively in the Redis internals, however in order
-to avoid the overhead of indirect accesses, recently in many places
-we just use plain dynamic strings not wrapped inside a Redis object.
+Redis对象在Redis内部广泛使用，但为了避免间接访问的开销，最近在很多地方我们只使用未包装在Redis对象中的普通动态字符串。
 
 server.c
----
+这是Redis服务器的入口点，其中main()定义了该功能。以下是启动Redis服务器的最重要步骤。
 
-This is the entry point of the Redis server, where the `main()` function
-is defined. The following are the most important steps in order to startup
-the Redis server.
+initServerConfig()设置server结构的默认值。
+initServer() 分配操作，设置监听套接字等所需的数据结构。
+aeMain() 启动侦听新连接的事件循环。
+事件循环定期调用两个特殊函数：
 
-* `initServerConfig()` setups the default values of the `server` structure.
-* `initServer()` allocates the data structures needed to operate, setup the listening socket, and so forth.
-* `aeMain()` starts the event loop which listens for new connections.
+serverCron()定期调用（根据server.hz频率），并执行必须不时执行的任务，例如检查timedout客户端。
+beforeSleep() 每次事件循环触发时都会调用，Redis会提供一些请求，并返回到事件循环中。
+在server.c中，您可以找到处理Redis服务器其他重要事项的代码：
 
-There are two special functions called periodically by the event loop:
-
-1. `serverCron()` is called periodically (according to `server.hz` frequency), and performs tasks that must be performed from time to time, like checking for timedout clients.
-2. `beforeSleep()` is called every time the event loop fired, Redis served a few requests, and is returning back into the event loop.
-
-Inside server.c you can find code that handles other vital things of the Redis server:
-
-* `call()` is used in order to call a given command in the context of a given client.
-* `activeExpireCycle()` handles eviciton of keys with a time to live set via the `EXPIRE` command.
-* `freeMemoryIfNeeded()` is called when a new write command should be performed but Redis is out of memory according to the `maxmemory` directive.
-* The global variable `redisCommandTable` defines all the Redis commands, specifying the name of the command, the function implementing the command, the number of arguments required, and other properties of each command.
-
+call() 用于在给定客户端的上下文中调用给定命令。
+activeExpireCycle()通过EXPIRE命令处理设置时间的钥匙驱逐。
+freeMemoryIfNeeded()当应该执行新的写命令时调用，但根据maxmemory指令Redis的内存不足。
+全局变量redisCommandTable定义所有Redis命令，指定命令的名称，实现命令的函数，所需的参数数量以及每个命令的其他属性。
 networking.c
----
+此文件定义了客户端，主服务器和副本的所有I / O功能（在Redis中只是特殊客户端）：
 
-This file defines all the I/O functions with clients, masters and replicas
-(which in Redis are just special clients):
+createClient() 分配并初始化一个新客户端。
+该addReply*()系列函数，以便将数据追加到所述客户端的结构，将被传输到客户端作为用于执行给定的命令的回应，使用命令实现。
+writeToClient()将输出缓冲区中待处理的数据传输到客户端，并由可写事件处理程序 调用sendReplyToClient()。
+readQueryFromClient()是可读事件处理程序，并将从客户端读取的数据累积到查询缓冲区中。
+processInputBuffer()是根据Redis协议解析客户端查询缓冲区的入口点。一旦准备好处理命令，就调用processCommand()内部定义server.c的命令以实际执行命令。
+freeClient() 解除分配，断开连接并删除客户端。
+aof.c和rdb.c
+您可以从名称中猜出这些文件为Redis实现RDB和AOF持久性。Redis使用基于fork() 系统调用的持久性模型，以创建具有Redis主线程相同（共享）内存内容的线程。此辅助线程转储磁盘上的内存内容。这用于rdb.c在磁盘上创建快照，以及aof.c在仅附加文件太大时执行AOF重写。
 
-* `createClient()` allocates and initializes a new client.
-* the `addReply*()` family of functions are used by commands implementations in order to append data to the client structure, that will be transmitted to the client as a reply for a given command executed.
-* `writeToClient()` transmits the data pending in the output buffers to the client and is called by the *writable event handler* `sendReplyToClient()`.
-* `readQueryFromClient()` is the *readable event handler* and accumulates data from read from the client into the query buffer.
-* `processInputBuffer()` is the entry point in order to parse the client query buffer according to the Redis protocol. Once commands are ready to be processed, it calls `processCommand()` which is defined inside `server.c` in order to actually execute the command.
-* `freeClient()` deallocates, disconnects and removes a client.
+内部实现aof.c具有附加功能，以便实现允许命令在客户端执行时将命令附加到AOF文件中的API。
 
-aof.c and rdb.c
----
-
-As you can guess from the names these files implement the RDB and AOF
-persistence for Redis. Redis uses a persistence model based on the `fork()`
-system call in order to create a thread with the same (shared) memory
-content of the main Redis thread. This secondary thread dumps the content
-of the memory on disk. This is used by `rdb.c` to create the snapshots
-on disk and by `aof.c` in order to perform the AOF rewrite when the
-append only file gets too big.
-
-The implementation inside `aof.c` has additional functions in order to
-implement an API that allows commands to append new commands into the AOF
-file as clients execute them.
-
-The `call()` function defined inside `server.c` is responsible to call
-the functions that in turn will write the commands into the AOF.
+call()内部定义的函数server.c负责调用函数，而函数又将命令写入AOF。
 
 db.c
----
+某些Redis命令对特定数据类型进行操作，其他命令则是通用的。通用命令的示例是DEL和EXPIRE。它们专注于键，而不是它们的值。所有这些通用命令都在里面定义db.c。
 
-Certain Redis commands operate on specific data types, others are general.
-Examples of generic commands are `DEL` and `EXPIRE`. They operate on keys
-and not on their values specifically. All those generic commands are
-defined inside `db.c`.
+此外，还db.c实现了一个API，以便在不直接访问内部数据结构的情况下对Redis数据集执行某些操作。
 
-Moreover `db.c` implements an API in order to perform certain operations
-on the Redis dataset without directly accessing the internal data structures.
+db.c在许多命令实现中使用的最重要的函数如下：
 
-The most important functions inside `db.c` which are used in many commands
-implementations are the following:
-
-* `lookupKeyRead()` and `lookupKeyWrite()` are used in order to get a pointer to the value associated to a given key, or `NULL` if the key does not exist.
-* `dbAdd()` and its higher level counterpart `setKey()` create a new key in a Redis database.
-* `dbDelete()` removes a key and its associated value.
-* `emptyDb()` removes an entire single database or all the databases defined.
-
-The rest of the file implements the generic commands exposed to the client.
+lookupKeyRead()并且lookupKeyWrite()用于获取指向与给定键关联的值的指针，或者NULL如果该键不存在。
+dbAdd()及其更高级别的对应物setKey()在Redis数据库中创建一个新键。
+dbDelete() 删除键及其关联值。
+emptyDb() 删除整个单个数据库或定义的所有数据库。
+该文件的其余部分实现了暴露给客户端的通用命令。
 
 object.c
----
+robj已经描述了定义Redis对象的结构。里面 object.c有所有在基本级别上使用Redis对象操作的函数，比如分配新对象的函数，处理引用计数等等。此文件中的显着功能：
 
-The `robj` structure defining Redis objects was already described. Inside
-`object.c` there are all the functions that operate with Redis objects at
-a basic level, like functions to allocate new objects, handle the reference
-counting and so forth. Notable functions inside this file:
-
-* `incrRefcount()` and `decrRefCount()` are used in order to increment or decrement an object reference count. When it drops to 0 the object is finally freed.
-* `createObject()` allocates a new object. There are also specialized functions to allocate string objects having a specific content, like `createStringObjectFromLongLong()` and similar functions.
-
-This file also implements the `OBJECT` command.
+incrRefcount()并decrRefCount()用于增加或减少对象引用计数。当它下降到0时，最终释放对象。
+createObject()分配一个新对象。还有专门的函数来分配具有特定内容的字符串对象，例如createStringObjectFromLongLong()类似的功能。
+该文件还实现了该OBJECT命令。
 
 replication.c
----
+这是Redis中最复杂的文件之一，建议只有在熟悉其余代码库之后才能接近它。在此文件中，实现了Redis的主副本角色。
 
-This is one of the most complex files inside Redis, it is recommended to
-approach it only after getting a bit familiar with the rest of the code base.
-In this file there is the implementation of both the master and replica role
-of Redis.
+此文件中最重要的功能之一是replicationFeedSlaves()将命令写入表示连接到主服务器的副本实例的客户端，以便副本可以获取客户端执行的写入：这样，他们的数据集将保持与主。
 
-One of the most important functions inside this file is `replicationFeedSlaves()` that writes commands to the clients representing replica instances connected
-to our master, so that the replicas can get the writes performed by the clients:
-this way their data set will remain synchronized with the one in the master.
+此文件还同时实现SYNC和PSYNC被以执行主机和副本之间的第一同步，还是继续断开后复制使用的命令。
 
-This file also implements both the `SYNC` and `PSYNC` commands that are
-used in order to perform the first synchronization between masters and
-replicas, or to continue the replication after a disconnection.
+其他C文件
+t_hash.c，t_list.c，t_set.c，t_string.c，t_zset.c和t_stream.c包含Redis的数据类型的实现。它们实现了用于访问给定数据类型的API，以及用于这些数据类型的客户端命令实现。
+ae.c 实现了Redis事件循环，它是一个独立的库，易于阅读和理解。
+sds.c是Redis字符串库，请访问http://github.com/antirez/sds以获取更多信息。
+anet.c 与内核公开的原始接口相比，它是一种以更简单的方式使用POSIX网络的库。
+dict.c 是一个非阻塞哈希表的实现，它以递增方式重新进行。
+scripting.c实现Lua脚本。它完全独立于Redis实现的其余部分，并且很容易理解您是否熟悉Lua API。
+cluster.c实现Redis集群。在熟悉Redis代码库的其余部分之后，可能只有很好的读取。如果要阅读，请cluster.c务必阅读Redis Cluster规范。
+解剖Redis命令
+所有Redis命令都按以下方式定义：
 
-Other C files
----
+void foobarCommand(client *c) {
+    printf("%s",c->argv[1]->ptr); /* Do something with the argument. */
+    addReply(c,shared.ok); /* Reply something to the client. */
+}
+然后server.c在命令表中引用该命令：
 
-* `t_hash.c`, `t_list.c`, `t_set.c`, `t_string.c`, `t_zset.c` and `t_stream.c` contains the implementation of the Redis data types. They implement both an API to access a given data type, and the client commands implementations for these data types.
-* `ae.c` implements the Redis event loop, it's a self contained library which is simple to read and understand.
-* `sds.c` is the Redis string library, check http://github.com/antirez/sds for more information.
-* `anet.c` is a library to use POSIX networking in a simpler way compared to the raw interface exposed by the kernel.
-* `dict.c` is an implementation of a non-blocking hash table which rehashes incrementally.
-* `scripting.c` implements Lua scripting. It is completely self contained from the rest of the Redis implementation and is simple enough to understand if you are familar with the Lua API.
-* `cluster.c` implements the Redis Cluster. Probably a good read only after being very familiar with the rest of the Redis code base. If you want to read `cluster.c` make sure to read the [Redis Cluster specification][3].
+{"foobar",foobarCommand,2,"rtF",0,NULL,0,0,0,0,0},
+在上面的示例2中，命令采用的参数数量"rtF"是命令标志，如命令表顶部注释中所述server.c。
 
-[3]: http://redis.io/topics/cluster-spec
+在命令以某种方式操作之后，它返回对客户端的回复，通常使用addReply()或内部定义的类似函数networking.c。
 
-Anatomy of a Redis command
----
+Redis源代码中有大量的命令实现，可以作为实际命令实现的示例。编写一些玩具命令可以很好地熟悉代码库。
 
-All the Redis commands are defined in the following way:
+还有许多其他文件没有在这里描述，但它涵盖了一切都没用。我们希望帮助您完成第一步。最终你会在Redis代码库中找到自己的方式:-)
 
-    void foobarCommand(client *c) {
-        printf("%s",c->argv[1]->ptr); /* Do something with the argument. */
-        addReply(c,shared.ok); /* Reply something to the client. */
-    }
-
-The command is then referenced inside `server.c` in the command table:
-
-    {"foobar",foobarCommand,2,"rtF",0,NULL,0,0,0,0,0},
-
-In the above example `2` is the number of arguments the command takes,
-while `"rtF"` are the command flags, as documented in the command table
-top comment inside `server.c`.
-
-After the command operates in some way, it returns a reply to the client,
-usually using `addReply()` or a similar function defined inside `networking.c`.
-
-There are tons of commands implementations inside the Redis source code
-that can serve as examples of actual commands implementations. To write
-a few toy commands can be a good exercise to familiarize with the code base.
-
-There are also many other files not described here, but it is useless to
-cover everything. We want to just help you with the first steps.
-Eventually you'll find your way inside the Redis code base :-)
-
-Enjoy!
+请享用！
